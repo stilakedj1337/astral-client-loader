@@ -2,9 +2,11 @@ import os, threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import requests
 
-BOT_TOKEN = os.getenv("9068347313:AAEw6w2mnGufjGoG02IsMAqBH0Rf5Ci3RX4", "")
-CHAT_ID   = os.getenv("5884767841", "")
+BOT_TOKEN = os.getenv("9068347313:AAEw6w2mnGufjGoG02IsMAqBH0Rf5Ci3RX4", "").strip()
+CHAT_ID   = os.getenv("5884767841", "").strip()
 PORT      = int(os.getenv("PORT", 10000))
+
+print(f"Запуск бота... Токен: {BOT_TOKEN[:10]}...", flush=True)
 
 def bot_loop():
     offset = None
@@ -12,7 +14,10 @@ def bot_loop():
         try:
             r = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates",
                              params={"timeout": 30, "offset": offset}, timeout=40)
-            for upd in r.json().get("result", []):
+            data = r.json()
+            if not data.get("ok"):
+                print(f"Ошибка Telegram API: {data}", flush=True)
+            for upd in data.get("result", []):
                 offset = upd["update_id"] + 1
                 msg = upd.get("message", {})
                 text = msg.get("text", "")
@@ -23,7 +28,8 @@ def bot_loop():
                 elif text.startswith("/get") and str(chat) == str(CHAT_ID):
                     requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
                                   data={"chat_id": chat, "text": "No new reports."})
-        except Exception:
+        except Exception as e:
+            print(f"Ошибка в цикле: {e}", flush=True)
             time.sleep(5)
 
 class Health(BaseHTTPRequestHandler):
